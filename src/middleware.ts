@@ -5,7 +5,7 @@ export default createMiddleware({
   locales: ['en', 'ar'],
  
   // Used when no locale matches
-  defaultLocale: 'en'
+  defaultLocale: 'ar'
 });
  
 export const config = {
@@ -19,7 +19,7 @@ export const config = {
     '/(ar|en)/:path*',
 
     // Enable redirects that add a locale prefix
-    // (e.g. `/pathnames` -> `/en/pathnames`)
+    // (e.g. `/pathnames` -> `/ar/pathnames`)
     '/((?!_next|_ipsw|_vercel|api|.*\\..*).*)'
   ]
 };
