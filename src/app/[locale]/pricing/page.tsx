@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { Price as ServicePrice } from '@/types';
-import { collection, doc, orderBy, query } from 'firebase/firestore';
+import { collection, doc, orderBy, query, getDocs } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Check, X, PlusCircle } from 'lucide-react';
@@ -141,7 +141,7 @@ function AddServiceDialog() {
       }
     };
     
-    await addDocumentNonBlocking(servicesCollection, newService);
+    addDocumentNonBlocking(servicesCollection, newService);
     
     toast({ title: 'Service Added', description: `${name} has been added.` });
     setOpen(false);
