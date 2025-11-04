@@ -61,7 +61,7 @@ export default function SalesPage() {
   const [staffId, setStaffId] = React.useState('');
   const [price, setPrice] = React.useState<number | string>('');
   const [commission, setCommission] = React.useState<number | string>('');
-  const [paymentType, setPaymentType] = React.useState<PaymentType | undefined>(undefined);
+  const [paymentType, setPaymentType] = React.useState<PaymentType>('cash');
   const [waxAddOn, setWaxAddOn] = React.useState(false);
   const [errors, setErrors] = React.useState<{ [key: string]: boolean }>({});
 
@@ -86,55 +86,62 @@ export default function SalesPage() {
     setStaffId('');
     setPrice('');
     setCommission('');
-    setPaymentType(undefined);
+    setPaymentType('cash');
     setWaxAddOn(false);
     setErrors({});
   }, []);
 
   React.useEffect(() => {
     if (!serviceConfig) {
-      setPrice(''); setCommission(''); setCarSize(''); setPaymentType(undefined); setWaxAddOn(false);
+      setPrice(''); setCommission(''); setCarSize(''); setPaymentType('cash'); setWaxAddOn(false);
       return;
     }
-
+  
+    // Determine the effective payment type
+    let currentPaymentType = paymentType;
+    if (!serviceConfig.hasCoupon && paymentType === 'coupon') {
+      currentPaymentType = 'cash'; // Default to cash if coupon is not an option
+      setPaymentType('cash');
+    }
+  
     if (!serviceConfig.needsSize) setCarSize('');
-    if (!serviceConfig.hasCoupon && paymentType === 'coupon') setPaymentType(undefined);
     if (!showWaxOption) setWaxAddOn(false);
-
+  
     const priceKey = serviceConfig.needsSize && carSize ? carSize : 'default';
     if (!priceKey) {
       setPrice(''); setCommission('');
       return;
     }
-
+  
     const priceObj = serviceConfig.prices[priceKey];
     if (priceObj) {
       let currentPrice = 0;
       let currentCommission = 0;
-
-      if (paymentType === 'coupon' && serviceConfig.hasCoupon && priceObj.couponCommission !== undefined) {
+  
+      if (currentPaymentType === 'coupon' && serviceConfig.hasCoupon && priceObj.couponCommission !== undefined) {
         currentPrice = 0;
         currentCommission = priceObj.couponCommission;
       } else {
         currentPrice = priceObj.price;
         currentCommission = priceObj.commission;
       }
-
+  
       if (waxAddOn && showWaxOption) {
         const waxPriceInfo = waxService?.prices['default'];
-        if(waxPriceInfo) {
-            currentPrice += waxPriceInfo.price;
-            currentCommission += waxPriceInfo.commission;
+        if (waxPriceInfo) {
+          currentPrice += waxPriceInfo.price;
+          currentCommission += waxPriceInfo.commission;
         }
       }
-      
+  
       setPrice(currentPrice);
       setCommission(currentCommission);
     } else {
       setPrice('');
       setCommission('');
     }
-   }, [serviceId, carSize, paymentType, serviceConfig, waxAddOn, showWaxOption, services, waxService]);
+  }, [serviceId, carSize, paymentType, serviceConfig, waxAddOn, showWaxOption, services, waxService]);
+  
 
   const validateForm = () => {
     const newErrors: { [key: string]: boolean } = {};
@@ -160,7 +167,7 @@ export default function SalesPage() {
     const salesCollection = collection(firestore, 'users', user.uid, 'sales');
 
     const selectedStaff = staff?.find(s => s.id === staffId);
-    if (!selectedStaff) return;
+    if (!selectedStaff || !paymentType) return;
      
     const isPaid = paymentType !== 'not-paid';
     
