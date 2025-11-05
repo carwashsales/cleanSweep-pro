@@ -38,8 +38,8 @@ export default function RegisterPage() {
     if (!auth || !firestore) {
         toast({
             variant: "destructive",
-            title: "Error",
-            description: "Firebase services are not available. Please try again later.",
+            title: "Error / خطأ",
+            description: "Firebase services are not available. Please try again later. / خدمات Firebase غير متاحة. يرجى المحاولة مرة أخرى في وقت لاحق.",
         });
         return;
     }
@@ -49,45 +49,45 @@ export default function RegisterPage() {
         const newUser = userCredential.user;
         await seedDefaultServices(firestore, newUser.uid);
         toast({
-            title: "Account Created",
-            description: "Your account has been created and default services have been set up.",
+            title: "Account Created / تم إنشاء الحساب",
+            description: "Your account has been created and default services have been set up. / تم إنشاء حسابك وإعداد الخدمات الافتراضية.",
         });
         // The onAuthStateChanged listener will handle the redirect
     } catch (error: any) {
         console.error("Error signing up:", error);
+        let description = "An unexpected error occurred. / حدث خطأ غير متوقع.";
         if (error.code === 'auth/email-already-in-use') {
-            toast({
-                variant: "destructive",
-                title: "Sign-up failed",
-                description: "This email is already in use. Please try logging in.",
-            });
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Sign-up failed",
-                description: error.message || "An unexpected error occurred.",
-            });
+            description = "This email is already in use. Please try logging in. / هذا البريد الإلكتروني مستخدم بالفعل. يرجى محاولة تسجيل الدخول.";
+        } else if (error.code === 'auth/weak-password') {
+            description = "Password should be at least 6 characters. / يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.";
         }
+        toast({
+            variant: "destructive",
+            title: "Sign-up failed / فشل الاشتراك",
+            description: description,
+        });
     }
   };
   
   if (isUserLoading || user) {
-    return <div>Loading...</div>
+    return <div>Loading... / ...جاري التحميل</div>
   }
 
   return (
     <div className="flex items-center justify-center min-h-screen">
       <Card className="mx-auto max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Sign Up</CardTitle>
+          <CardTitle className="text-2xl">Sign Up / اشتراك</CardTitle>
           <CardDescription>
             Enter your information to create an account
+            <br />
+            أدخل معلوماتك لإنشاء حساب
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email / البريد الإلكتروني</Label>
               <Input
                 id="email"
                 type="email"
@@ -98,7 +98,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password / كلمة المرور</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -108,13 +108,13 @@ export default function RegisterPage() {
               />
             </div>
             <Button type="submit" className="w-full" onClick={handleSignUp}>
-              Create an account
+              Create an account / إنشاء حساب
             </Button>
           </div>
           <div className="mt-4 text-center text-sm">
-            Already have an account?{' '}
+            Already have an account? / لديك حساب بالفعل؟{' '}
             <Link href="/login" className="underline">
-              Sign in
+              Sign in / تسجيل الدخول
             </Link>
           </div>
         </CardContent>
