@@ -156,7 +156,7 @@ export default function LoyaltyPage() {
       const totalWashes   = custSnap.exists() ? (custSnap.data() as Customer).totalWashes : 0;
 
       const isFreeRedemption = saleData.paymentMethod === 'free-loyalty';
-      const newCount = isFreeRedemption ? 0 : currentStamps + 1;
+      const newCount = isFreeRedemption ? 0 : (currentStamps >= 5 ? 1 : currentStamps + 1);
 
       // Update customer document
       await setDoc(custRef, {
