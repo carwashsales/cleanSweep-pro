@@ -656,8 +656,8 @@ export default function SalesPage() {
                         htmlFor="redeem-reward"
                         className="text-xs font-bold cursor-pointer flex-1 flex flex-col gap-0.5"
                       >
-                        <span>Redeem Loyalty Free Wash (6th Wash)</span>
-                        <span className="text-slate-500 text-[10px] font-normal">استرداد غسيل مجاني للولاء (الغسيل السادس)</span>
+                        <span>Redeem Loyalty Free Wash (7th Wash)</span>
+                        <span className="text-slate-500 text-[10px] font-normal">استرداد غسيل مجاني للولاء (الغسيل السابع)</span>
                       </Label>
                     </div>
                     {redeemFreeWash && (

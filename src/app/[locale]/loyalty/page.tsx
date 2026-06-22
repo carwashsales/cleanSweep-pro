@@ -156,7 +156,7 @@ export default function LoyaltyPage() {
       const totalWashes   = custSnap.exists() ? (custSnap.data() as Customer).totalWashes : 0;
 
       const isFreeRedemption = saleData.paymentMethod === 'free-loyalty';
-      const newCount = isFreeRedemption ? 0 : (currentStamps >= 5 ? 1 : currentStamps + 1);
+      const newCount = isFreeRedemption ? 0 : (currentStamps >= 6 ? 1 : currentStamps + 1);
 
       // Update customer document
       await setDoc(custRef, {
@@ -312,7 +312,7 @@ export default function LoyaltyPage() {
 
   // ─── Loyalty Stamp Card View ───────────────────────────────────────────────
   if (savedPhone && customer) {
-    const STAMPS_NEEDED  = 5;
+    const STAMPS_NEEDED  = 6;
     const progress       = customer.washCount;
     const isFreeWashReady = progress >= STAMPS_NEEDED;
 
@@ -388,12 +388,12 @@ export default function LoyaltyPage() {
 
               {/* Reward Status Banner */}
               {isFreeWashReady ? (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30 text-green-300 flex items-start gap-3 text-xs">
-                  <Sparkles className="h-5 w-5 text-green-400 shrink-0 mt-0.5 animate-pulse" />
+                <div className="p-4 rounded-xl bg-gradient-to-br from-green-500/30 via-emerald-500/20 to-teal-500/10 border border-green-500/40 text-green-300 flex items-start gap-3 text-xs shadow-[0_0_15px_rgba(34,197,94,0.15)] animate-pulse">
+                  <Sparkles className="h-5 w-5 text-green-400 shrink-0 mt-0.5 animate-bounce" />
                   <div className="space-y-1">
-                    <p className="font-bold text-sm">Congratulations! / تهانينا!</p>
-                    <p className="text-green-200">Your next wash is <strong>FREE!</strong> Show this screen to the cashier.</p>
-                    <p className="opacity-75 text-[11px]">غسيلك القادم <strong>مجاني!</strong> اعرض هذه الشاشة للصراف للاسترداد.</p>
+                    <p className="font-bold text-sm text-green-200">🎉 Congratulations! / تهانينا! 🎉</p>
+                    <p className="text-green-100 font-medium">You completed 6 washes! Next time come and wash for <strong>FREE!</strong></p>
+                    <p className="text-green-300 text-[11px]">لقد أكملت 6 غسلات! المرة القادمة تفضل بالزيارة واحصل على <strong>غسيل مجاني!</strong></p>
                   </div>
                 </div>
               ) : (
@@ -494,8 +494,8 @@ export default function LoyaltyPage() {
           </h1>
           <p className="text-slate-400 text-sm font-medium">برنامج الولاء الرقمي</p>
           <p className="text-slate-500 text-xs flex flex-col gap-0.5">
-            <span>Wash 5 times → Get your 6th wash FREE</span>
-            <span>اغسل 5 مرات ← واحصل على الغسيل السادس مجاناً</span>
+            <span>Wash 6 times → Get your 7th wash FREE</span>
+            <span>اغسل 6 مرات ← واحصل على الغسيل السابع مجاناً</span>
           </p>
         </div>
 
@@ -590,8 +590,8 @@ export default function LoyaltyPage() {
         <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-slate-500">
           {[
             { step: '1', en: 'Register', ar: 'سجّل', sub: 'Enter name & phone', subAr: 'أدخل اسمك ورقمك' },
-            { step: '2', en: 'Wash', ar: 'اغسل', sub: 'Earn 5 stamps', subAr: 'اجمع 5 طوابع' },
-            { step: '3', en: 'FREE', ar: 'مجاناً', sub: '6th wash free', subAr: 'السادس مجاناً' },
+            { step: '2', en: 'Wash', ar: 'اغسل', sub: 'Earn 6 stamps', subAr: 'اجمع 6 طوابع' },
+            { step: '3', en: 'FREE', ar: 'مجاناً', sub: '7th wash free', subAr: 'السابع مجاناً' },
           ].map(({ step, en, ar, sub, subAr }) => (
             <div key={step} className="bg-slate-900/50 rounded-xl p-2 border border-slate-800/60 space-y-1">
               <div className="w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center text-accent font-bold text-xs mx-auto">{step}</div>
