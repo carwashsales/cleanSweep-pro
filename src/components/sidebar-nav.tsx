@@ -12,6 +12,7 @@ import {
     SidebarMenuButton,
     SidebarFooter,
 } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
     LayoutDashboard,
     Package,
@@ -39,11 +40,21 @@ const navItems = [
 export default function SidebarNav() {
     const pathname = usePathname();
     const t = useTranslations('Sidebar');
+    const { isMobile, setOpenMobile } = useSidebar();
+
+    // Hide the sidebar on the login route (e.g. /en/login or /ar/login)
+    if (typeof pathname === 'string' && pathname.includes('/login')) return null;
+
+    const handleLinkClick = () => {
+        if (isMobile) {
+            setOpenMobile(false);
+        }
+    };
 
     return (
         <Sidebar collapsible="icon" variant="sidebar" side="left" className="dark:bg-background dark:border-r">
             <SidebarHeader className="h-14 flex items-center justify-center p-2">
-                <Link href="/" className="flex items-center gap-2 font-bold text-lg group-data-[collapsible=icon]:hidden text-primary">
+                <Link href="/" onClick={handleLinkClick} className="flex items-center gap-2 font-bold text-lg group-data-[collapsible=icon]:hidden text-primary">
                     <Car className="h-6 w-6 text-primary" />
                     <span className="font-headline">CleanSweep</span>
                 </Link>
@@ -59,11 +70,11 @@ export default function SidebarNav() {
                                 tooltip={{children: t(item.labelKey as any)}}
                                 className="dark:data-[active=true]:bg-sidebar-accent"
                             >
-                                <Link href={item.href}>
+                                <Link href={item.href} onClick={handleLinkClick}>
                                     <item.icon />
                                     <span>{t(item.labelKey as any)}</span>
                                 </Link>
-                            </SidebarMenuButton>
+                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     ))}
                 </SidebarMenu>
@@ -72,7 +83,7 @@ export default function SidebarNav() {
                  <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip={{children: t('settings')}} isActive={pathname.includes('/settings')}>
-                            <Link href="/settings">
+                            <Link href="/settings" onClick={handleLinkClick}>
                                 <Settings />
                                 <span>{t('settings')}</span>
                             </Link>
@@ -80,7 +91,7 @@ export default function SidebarNav() {
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip={{children: t('support')}} isActive={pathname.includes('/support')}>
-                            <Link href="/support">
+                            <Link href="/support" onClick={handleLinkClick}>
                                 <HelpCircle />
                                 <span>{t('support')}</span>
                             </Link>

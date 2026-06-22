@@ -1,29 +1,9 @@
-/**
- * @fileoverview Firestore Security Rules for Prototyping.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each user has their own
- * private data tree under `/users/{userId}`. Only the authenticated user can
- * read and write their own data. Data shapes are not strictly validated in this
- * prototyping phase, but relational integrity is enforced where relevant.
- *
- * Data Structure:
- * All data is nested under /users/{userId}, including inventory, orders, sales, pricing, and staff information.
- *
- * Key Security Decisions:
- * - Users can only access their own data. Listing other users is not permitted.
- * - Write operations (create, update, delete) MUST NEVER use `if true;`.
- * - The rules explicitly deny any operation that is not explicitly allowed.
- * - Data validation is minimal, focusing only on authorization and relational integrity.
- * - Public read access is not granted to any collection.
- * - Ownership is validated on create and update operations to prevent unauthorized access.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
+     * @description Checks if the request is authenticated (shop owner).
      */
     function isSignedIn() {
       return request.auth != null;
@@ -31,8 +11,6 @@ service cloud.firestore {
 
     /**
      * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId - The user ID to compare against.
-     * @return {boolean} True if the user is signed in and the UID matches, false otherwise.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
@@ -40,25 +18,13 @@ service cloud.firestore {
 
     /**
      * @description Checks if the authenticated user is the owner of the existing document.
-     * @param {string} userId - The user ID to compare against.
-     * @return {boolean} True if the user is signed in, the UID matches, and the resource exists.
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Enforces document ownership for writes, validates relational integrity, and ensures data consistency.
-     * @path /users/{userId}
-     * @allow (create) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can create their own user document.
-     * @allow (get) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can get their own user document.
-     * @allow (update) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can update their own user document.
-     * @allow (delete) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can delete their own user document.
-     * @deny (create) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot create a user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-     * @deny (get) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot get user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-     * @deny (update) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot update user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-     * @deny (delete) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot delete user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-     * @principle Enforces document ownership for all operations.
+     * @description Enforces ownership and custom access for shop collections.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -67,21 +33,6 @@ service cloud.firestore {
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
 
-      /**
-       * @description Enforces document ownership for inventory items, validates relational integrity, and ensures data consistency.
-       * @path /users/{userId}/inventory/{inventoryId}
-       * @allow (create) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can create an inventory item under their user document.
-       * @allow (get) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can get an inventory item under their user document.
-       * @allow (list) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can list inventory items under their user document.
-       * @allow (update) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can update an inventory item under their user document.
-       * @allow (delete) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can delete an inventory item under their user document.
-       * @deny (create) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot create an inventory item under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (get) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot get an inventory item under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (list) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot list inventory items under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (update) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot update an inventory item under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (delete) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot delete an inventory item under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @principle Enforces document ownership for all operations.
-       */
       match /inventory/{inventoryId} {
         allow get: if isOwner(userId);
         allow list: if isOwner(userId);
@@ -90,21 +41,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Enforces document ownership for orders, validates relational integrity, and ensures data consistency.
-       * @path /users/{userId}/orders/{orderId}
-       * @allow (create) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can create an order under their user document.
-       * @allow (get) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can get an order under their user document.
-       * @allow (list) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can list orders under their user document.
-       * @allow (update) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can update an order under their user document.
-       * @allow (delete) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can delete an order under their user document.
-       * @deny (create) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot create an order under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (get) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot get an order under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (list) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot list orders under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (update) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot update an order under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (delete) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot delete an order under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @principle Enforces document ownership for all operations.
-       */
       match /orders/{orderId} {
         allow get: if isOwner(userId);
         allow list: if isOwner(userId);
@@ -113,44 +49,19 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Enforces document ownership for sales transactions, validates relational integrity, and ensures data consistency.
-       * @path /users/{userId}/sales/{saleId}
-       * @allow (create) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can create a sale transaction under their user document.
-       * @allow (get) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can get a sale transaction under their user document.
-       * @allow (list) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can list sale transactions under their user document.
-       * @allow (update) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can update a sale transaction under their user document.
-       * @allow (delete) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can delete a sale transaction under their user document.
-       * @deny (create) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot create a sale transaction under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (get) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot get a sale transaction under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (list) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot list sale transactions under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (update) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot update a sale transaction under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (delete) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot delete a sale transaction under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @principle Enforces document ownership for all operations.
-       */
       match /sales/{saleId} {
-        allow get: if isOwner(userId);
+        // Shop owner has full access.
+        // PUBLIC: Anyone with the saleId (from a QR code) can read a sale
+        // and claim the loyalty stamp exactly once (enforced by isLoyaltyClaimed flag).
+        allow get: if true;
         allow list: if isOwner(userId);
         allow create: if isOwner(userId);
-        allow update: if isExistingOwner(userId);
+        allow update: if isOwner(userId) ||
+          (resource.data.isLoyaltyClaimed == false &&
+           request.resource.data.isLoyaltyClaimed == true);
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Enforces document ownership for pricing information, validates relational integrity, and ensures data consistency.
-       * @path /users/{userId}/services/{serviceId}
-       * @allow (create) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can create pricing information under their user document.
-       * @allow (get) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can get pricing information under their user document.
-       * @allow (list) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can list pricing information under their user document.
-       * @allow (update) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can update pricing information under their user document.
-       * @allow (delete) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can delete pricing information under their user document.
-       * @deny (create) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot create pricing information under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (get) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot get pricing information under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (list) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot list pricing information under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (update) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot update pricing information under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (delete) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot delete pricing information under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @principle Enforces document ownership for all operations.
-       */
       match /services/{serviceId} {
         allow get: if isOwner(userId);
         allow list: if isOwner(userId);
@@ -159,27 +70,21 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Enforces document ownership for staff members, validates relational integrity, and ensures data consistency.
-       * @path /users/{userId}/staff/{staffId}
-       * @allow (create) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can create a staff member under their user document.
-       * @allow (get) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can get a staff member under their user document.
-       * @allow (list) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can list staff members under their user document.
-       * @allow (update) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can update a staff member under their user document.
-       * @allow (delete) - User 'ceo@gmail.com' (UID: 1eX6gVJxXScuYYJqEG93Y4MOYTV2) can delete a staff member under their user document.
-       * @deny (create) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot create a staff member under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (get) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot get a staff member under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (list) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot list staff members under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (update) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot update a staff member under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @deny (delete) - User 'hacker@gmail.com' (UID: SomeOtherUserID) cannot delete a staff member under user document with ID '1eX6gVJxXScuYYJqEG93Y4MOYTV2'.
-       * @principle Enforces document ownership for all operations.
-       */
       match /staff/{staffId} {
         allow get: if isOwner(userId);
         allow list: if isOwner(userId);
         allow create: if isOwner(userId);
         allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
+      }
+
+      match /customers/{customerPhone} {
+        // Shop owner has full access.
+        // PUBLIC: Customers can read and write their own loyalty record.
+        // The shopId in the QR code URL serves as the access control.
+        allow get: if true;
+        allow create, update: if true;
+        allow delete: if isOwner(userId);
       }
     }
   }

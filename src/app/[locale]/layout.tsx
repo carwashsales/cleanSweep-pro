@@ -7,12 +7,18 @@ import { NextIntlClientProvider } from "next-intl";
 
 export default async function AppLayout({ 
     children,
-    params: { locale }
+    params
  }: { 
     children: React.ReactNode,
-    params: { locale: string } 
+    params: Promise<{ locale: string }>
 }) {
-    const messages = await getMessages();
+    const { locale } = await params;
+    let messages;
+    try {
+        messages = (await import(`../../../messages/${locale}.json`)).default;
+    } catch (e) {
+        messages = {};
+    }
     
     return (
         <NextIntlClientProvider locale={locale} messages={messages}>

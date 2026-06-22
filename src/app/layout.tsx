@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale || 'ar'} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
