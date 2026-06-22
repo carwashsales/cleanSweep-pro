@@ -23,10 +23,27 @@ export type CarWashSale = {
   amount: number;
   commission: number;
   hasCoupon: boolean;
-  paymentMethod?: 'coupon' | 'cash' | 'machine' | 'not-paid';
+  paymentMethod?: 'coupon' | 'cash' | 'machine' | 'not-paid' | 'free-loyalty';
   waxAddOn: boolean;
   isPaid: boolean;
+  
+  // Commercial POS Additions
+  transactionId?: string;
+  invoiceNo?: string;
+  customerPhone?: string;
+  customerName?: string;
+  status?: 'pending' | 'in-progress' | 'completed' | 'delivered';
+  isLoyaltyClaimed?: boolean;
 };
+
+export type Customer = {
+  phone: string;
+  name: string;
+  washCount: number; // Current active stamps (0 to 5)
+  totalWashes: number; // Lifetime completed washes
+  lastWashDate?: string;
+};
+
 
 export type Price = {
   id: string;
