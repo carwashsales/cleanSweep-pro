@@ -41,6 +41,7 @@ import {
   Sparkles,
   Play,
   CheckCircle,
+  AlertCircle,
   Truck,
   Globe,
   Car
@@ -277,6 +278,9 @@ export default function SalesPage() {
         amount: items.reduce((sum, s) => sum + s.amount, 0),
         services: items.map(s => `${s.service}${s.carSize ? ` (${s.carSize.toUpperCase()})` : ''}`),
         staffList: Array.from(new Set(items.map(s => s.staffName))),
+        isLoyaltyClaimed: items.some(s => s.isLoyaltyClaimed),
+        customerPhone: items.find(s => s.customerPhone)?.customerPhone || null,
+        customerName: items.find(s => s.customerName)?.customerName || null,
         rawSales: items
       };
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -877,6 +881,35 @@ export default function SalesPage() {
                         <span>Staff / الموظفين: {item.staffList.join(', ')}</span>
                         <span className="capitalize">{item.paymentMethod.replace('-', ' ')}</span>
                       </div>
+                    </div>
+
+                    {/* Loyalty/Stamp Verification Status */}
+                    <div className="pt-2 border-t border-border/40 space-y-1.5">
+                      {item.paymentMethod === 'free-loyalty' ? (
+                        item.isLoyaltyClaimed ? (
+                          <div className="flex items-center gap-1.5 text-[10px] text-green-500 font-bold bg-green-500/10 p-1.5 rounded-lg border border-green-500/20">
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            <span>Stamps Reset: YES (Loyalty Claimed)</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[10px] text-red-500 font-extrabold bg-red-500/10 p-1.5 rounded-lg border border-red-500/30 animate-pulse">
+                            <AlertCircle className="h-3.5 w-3.5 text-red-500 animate-bounce" />
+                            <span>⚠️ UNCLAIMED: MUST SCAN TO RESET STAMPS ⚠️</span>
+                          </div>
+                        )
+                      ) : (
+                        item.isLoyaltyClaimed ? (
+                          <div className="flex items-center gap-1.5 text-[9px] text-blue-400 bg-blue-500/5 p-1 rounded border border-blue-500/10">
+                            <Check className="h-3 w-3" />
+                            <span>Stamp Earned: {item.customerName || 'Customer'}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[9px] text-slate-500 bg-slate-950/20 p-1 rounded border border-slate-800">
+                            <QrCode className="h-3 w-3 opacity-60" />
+                            <span>Stamp Pending Scan</span>
+                          </div>
+                        )
+                      )}
                     </div>
 
                     {/* Bottom: Actions & Flow Control */}
