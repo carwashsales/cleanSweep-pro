@@ -219,22 +219,14 @@ export default function SalesPage() {
 
     let currentCart = cart.map(item => ({ ...item, price: item.price, isFreeWash: false }));
 
-    // Apply loyalty free wash discount if toggled manually
+    // Apply loyalty free wash discount if toggled manually (only valid for Full Wash)
     if (redeemFreeWash) {
-      // Find the item with the highest price to apply the discount
-      let highestPriceIndex = -1;
-      let maxPrice = -1;
+      // Find the first "Full Wash" service item in the cart to apply the discount
+      const fullWashIndex = currentCart.findIndex(item => item.serviceName === 'Full Wash');
 
-      currentCart.forEach((item, index) => {
-        if (item.price > maxPrice) {
-          maxPrice = item.price;
-          highestPriceIndex = index;
-        }
-      });
-
-      if (highestPriceIndex !== -1) {
-        currentCart[highestPriceIndex].price = 0;
-        currentCart[highestPriceIndex].isFreeWash = true;
+      if (fullWashIndex !== -1) {
+        currentCart[fullWashIndex].price = 0;
+        currentCart[fullWashIndex].isFreeWash = true;
       }
     }
 
@@ -660,14 +652,20 @@ export default function SalesPage() {
                         htmlFor="redeem-reward"
                         className="text-xs font-bold cursor-pointer flex-1 flex flex-col gap-0.5"
                       >
-                        <span>Redeem Loyalty Free Wash (6th Wash)</span>
-                        <span className="text-slate-500 text-[10px] font-normal">استرداد غسيل مجاني للولاء (الغسيل السادس)</span>
+                        <span>Redeem Loyalty Free Wash (7th Wash)</span>
+                        <span className="text-slate-500 text-[10px] font-normal">استرداد غسيل مجاني للولاء (الغسيل السابع)</span>
                       </Label>
                     </div>
                     {redeemFreeWash && (
-                      <p className="text-[10px] text-green-500/90 leading-tight">
-                        ✨ Free wash mode enabled. The most expensive wash in the cart has been set to 0. The customer claims this using their stamp card QR code after payment.
-                      </p>
+                      cart.some(item => item.serviceName === 'Full Wash') ? (
+                        <p className="text-[10px] text-green-500/90 leading-tight">
+                          ✨ Free Full Wash discount applied! The "Full Wash" service has been set to 0. The customer scans their QR code to claim the free wash.
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-red-500/90 font-bold leading-tight animate-pulse">
+                          ⚠️ No "Full Wash" found in cart! The free wash reward can ONLY be applied to a "Full Wash" service. Please add it to the cart.
+                        </p>
+                      )
                     )}
                   </div>
                 )}
@@ -1124,8 +1122,8 @@ export default function SalesPage() {
             </p>
             
             <div className="text-[11px] text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800/80 max-w-sm flex flex-col gap-1 text-center">
-              <span>⚡ <strong>Loyalty stamp rule:</strong> Earning 5 stamps lights up card. The <strong>6th wash is free</strong>!</span>
-              <span className="text-slate-500 border-t border-slate-800/60 pt-1 mt-1">⚡ <strong>قاعدة الولاء:</strong> اجمع 5 طوابع غسيل، وبذلك يكون <strong>الغسيل السادس مجانياً بالكامل</strong>!</span>
+              <span>⚡ <strong>Loyalty rule:</strong> Earn <strong>6 stamps</strong> (paid washes) → Get the <strong>7th wash FREE!</strong> (Full Wash only)</span>
+              <span className="text-slate-500 border-t border-slate-800/60 pt-1 mt-1">⚡ <strong>قاعدة الولاء:</strong> اجمع <strong>٦ طوابع</strong> غسيل مدفوع ← احصل على <strong>الغسيل السابع مجانياً!</strong> (غسيل كامل فقط)</span>
             </div>
           </div>
 

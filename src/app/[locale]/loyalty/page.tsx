@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import {
-  Check, Gift, Sparkles, User, Phone, LogOut,
+  Check, Gift, User, Phone, LogOut,
   Car, AlertCircle, CheckCircle, Loader2, Star,
 } from 'lucide-react';
 import type { Customer, CarWashSale } from '@/types';
@@ -156,7 +156,7 @@ export default function LoyaltyPage() {
       const totalWashes   = custSnap.exists() ? (custSnap.data() as Customer).totalWashes : 0;
 
       const isFreeRedemption = saleData.paymentMethod === 'free-loyalty';
-      const newCount = isFreeRedemption ? 0 : (currentStamps >= 5 ? 1 : currentStamps + 1);
+      const newCount = isFreeRedemption ? 0 : (currentStamps >= 6 ? 1 : currentStamps + 1);
 
       // Update customer document
       await setDoc(custRef, {
@@ -177,11 +177,15 @@ export default function LoyaltyPage() {
       setClaimStatus({
         success: true,
         msgEn: isFreeRedemption
-          ? 'Free wash redeemed! Stamps reset to 0.'
-          : `Stamp added! You now have ${newCount}/5 stamps.`,
+          ? '🎉 Free wash redeemed! Your stamps have been reset. See you next time!'
+          : newCount >= 6
+          ? `🌟 Stamp ${newCount}/6 added! You\'ve earned your FREE wash — come visit us!`
+          : `✅ Stamp ${newCount}/6 added! ${6 - newCount} more wash${6 - newCount !== 1 ? 'es' : ''} to unlock your FREE Full Wash!`,
         msgAr: isFreeRedemption
-          ? 'تم استرداد الغسيل المجاني! تمت إعادة التعيين.'
-          : `تم إضافة طابع! لديك الآن ${newCount}/5 طوابع.`,
+          ? '🎉 تم استرداد الغسيل المجاني! تمت إعادة تعيين الطوابع. نراك قريباً!'
+          : newCount >= 6
+          ? `🌟 طابع ${newCount}/6 تم إضافته! لقد ربحت غسيلك المجاني — تفضل بزيارتنا!`
+          : `✅ طابع ${newCount}/6 تم إضافته! ${6 - newCount} غسيل إضافي للحصول على الغسيل الكامل المجاني!`,
       });
     } catch (err) {
       console.error('Claim stamp error:', err);
@@ -312,7 +316,7 @@ export default function LoyaltyPage() {
 
   // ─── Loyalty Stamp Card View ───────────────────────────────────────────────
   if (savedPhone && customer) {
-    const STAMPS_NEEDED  = 5;
+    const STAMPS_NEEDED  = 6;
     const progress       = customer.washCount;
     const isFreeWashReady = progress >= STAMPS_NEEDED;
 
@@ -388,22 +392,25 @@ export default function LoyaltyPage() {
 
               {/* Reward Status Banner */}
               {isFreeWashReady ? (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-green-500/30 via-emerald-500/20 to-teal-500/10 border border-green-500/40 text-green-300 flex items-start gap-3 text-xs shadow-[0_0_15px_rgba(34,197,94,0.15)] animate-pulse">
-                  <Sparkles className="h-5 w-5 text-green-400 shrink-0 mt-0.5 animate-bounce" />
-                  <div className="space-y-1">
-                    <p className="font-bold text-sm text-green-200">🎉 Congratulations! / تهانينا! 🎉</p>
-                    <p className="text-green-100 font-medium">You completed 5 washes! Next time come and wash for <strong>FREE!</strong></p>
-                    <p className="text-green-300 text-[11px]">لقد أكملت 5 غسلات! المرة القادمة تفضل بالزيارة واحصل على <strong>غسيل مجاني!</strong></p>
+                <div className="relative p-4 rounded-2xl overflow-hidden border-2 border-green-400/50 text-green-200 flex items-start gap-3 text-xs" style={{background: 'linear-gradient(135deg, rgba(34,197,94,0.25) 0%, rgba(16,185,129,0.15) 50%, rgba(20,184,166,0.10) 100%)', boxShadow: '0 0 30px rgba(34,197,94,0.2), inset 0 0 40px rgba(34,197,94,0.05)'}}>
+                  <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px)'}} />
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-green-500/20 border border-green-400/40 flex items-center justify-center">
+                    <Gift className="h-5 w-5 text-green-400" />
+                  </div>
+                  <div className="space-y-1.5 z-10">
+                    <p className="font-extrabold text-sm text-green-200 tracking-tight">🎉 Congratulations! / تهانينا! 🎉</p>
+                    <p className="text-green-100 font-semibold leading-snug">You've completed <strong>6 washes!</strong> Come in anytime for your <strong className="text-yellow-300">FREE Full Wash! 🚗✨</strong></p>
+                    <p className="text-green-300/90 text-[11px] border-t border-green-500/20 pt-1">أكملت <strong>٦ غسلات!</strong> تفضّل بزيارتنا في أي وقت للحصول على <strong className="text-yellow-200">غسيل كامل مجاني!</strong></p>
                   </div>
                 </div>
               ) : (
-                <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl text-center text-xs flex flex-col gap-1">
+                <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl text-center text-xs flex flex-col gap-1">
                   <span>
                     Wash <strong className="text-accent">{STAMPS_NEEDED - progress}</strong> more time{STAMPS_NEEDED - progress !== 1 ? 's' : ''} to unlock your{' '}
-                    <strong className="text-green-400">FREE Car Wash!</strong>
+                    <strong className="text-green-400">FREE Full Wash!</strong>
                   </span>
                   <span className="text-[11px] text-slate-500">
-                    اغسل <strong className="text-accent">{STAMPS_NEEDED - progress}</strong> مرات إضافية للحصول على <strong className="text-green-500">غسيل مجاني!</strong>
+                    اغسل <strong className="text-accent">{STAMPS_NEEDED - progress}</strong> مرة إضافية للحصول على <strong className="text-green-500">غسيل كامل مجاني!</strong>
                   </span>
                 </div>
               )}
@@ -413,39 +420,55 @@ export default function LoyaltyPage() {
                 {[...Array(6)].map((_, i) => {
                   const stampNum = i + 1;
                   const isEarned = progress >= stampNum;
-                  const isGift   = stampNum === 6;
-                  const giftReady = isGift && isFreeWashReady;
 
                   return (
                     <div
                       key={i}
                       className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center border-2 transition-all duration-500 ${
-                        isEarned && !isGift
+                        isEarned
                           ? 'bg-accent/10 border-accent text-accent shadow-[0_0_20px_rgba(56,189,248,0.2)]'
-                          : giftReady
-                          ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.2)] animate-pulse'
-                          : isGift
-                          ? 'bg-slate-950 border-dashed border-slate-700 text-slate-600'
                           : 'bg-slate-950 border-slate-800 text-slate-700'
                       }`}
                     >
                       <span className="absolute top-1.5 left-2 text-[9px] font-bold opacity-50">{stampNum}</span>
 
-                      {isGift ? (
-                        <Gift className={`h-8 w-8 ${giftReady ? 'text-green-400' : 'opacity-30'}`} />
-                      ) : isEarned ? (
+                      {isEarned ? (
                         <Check className="h-8 w-8 stroke-[3]" />
                       ) : (
                         <Star className="h-7 w-7 opacity-20" />
                       )}
 
                       <span className="text-[9px] font-bold mt-1 uppercase tracking-wide flex flex-col items-center leading-none">
-                        <span>{isGift ? 'Free!' : 'Wash'}</span>
-                        <span className="text-[8px] font-normal opacity-70">{isGift ? 'مجاني' : 'غسيل'}</span>
+                        <span>Wash</span>
+                        <span className="text-[8px] font-normal opacity-70">غسيل</span>
                       </span>
                     </div>
                   );
                 })}
+
+                {/* 7th Slot: FREE WASH COUPON card */}
+                <div
+                  className={`relative col-start-2 aspect-square rounded-2xl flex flex-col items-center justify-center border-2 transition-all duration-700 overflow-hidden ${
+                    isFreeWashReady
+                      ? 'border-yellow-400 text-yellow-300 shadow-[0_0_25px_rgba(250,204,21,0.3)]'
+                      : 'border-dashed border-slate-700 text-slate-600'
+                  }`}
+                  style={isFreeWashReady ? {background: 'linear-gradient(135deg, rgba(250,204,21,0.15), rgba(34,197,94,0.15))'} : {background: 'transparent'}}
+                >
+                  {isFreeWashReady && (
+                    <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(250,204,21,0.4), transparent 70%)'}} />
+                  )}
+                  <span className="absolute top-1.5 left-2 text-[9px] font-bold opacity-50">7</span>
+                  <Gift className={`h-7 w-7 z-10 ${ isFreeWashReady ? 'text-yellow-300' : 'opacity-25' }`} />
+                  <span className="text-[8px] font-bold mt-1 z-10 uppercase tracking-wide flex flex-col items-center leading-none text-center px-1">
+                    <span className={isFreeWashReady ? 'text-yellow-200' : 'opacity-40'}>
+                      {isFreeWashReady ? 'Claim!' : 'Free!'}
+                    </span>
+                    <span className={`text-[7px] font-normal leading-tight ${ isFreeWashReady ? 'text-yellow-300/80' : 'opacity-30' }`}>
+                      {isFreeWashReady ? 'مجاناً الآن' : 'مجاني كامل'}
+                    </span>
+                  </span>
+                </div>
               </div>
 
               {/* Stats Footer */}
@@ -494,8 +517,8 @@ export default function LoyaltyPage() {
           </h1>
           <p className="text-slate-400 text-sm font-medium">برنامج الولاء الرقمي</p>
           <p className="text-slate-500 text-xs flex flex-col gap-0.5">
-            <span>Wash 5 times → Get your 6th wash FREE</span>
-            <span>اغسل 5 مرات ← واحصل على الغسيل السادس مجاناً</span>
+            <span>Wash 6 times → Get your 7th wash FREE (Full Wash only)</span>
+            <span>اغسل ٦ مرات ← واحصل على الغسيل السابع مجاناً (غسيل كامل فقط)</span>
           </p>
         </div>
 
@@ -590,8 +613,8 @@ export default function LoyaltyPage() {
         <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-slate-500">
           {[
             { step: '1', en: 'Register', ar: 'سجّل', sub: 'Enter name & phone', subAr: 'أدخل اسمك ورقمك' },
-            { step: '2', en: 'Wash', ar: 'اغسل', sub: 'Earn 5 stamps', subAr: 'اجمع 5 طوابع' },
-            { step: '3', en: 'FREE', ar: 'مجاناً', sub: '6th wash free', subAr: 'السادس مجاناً' },
+            { step: '2', en: 'Wash 6×', ar: 'اغسل ٦ مرات', sub: 'Earn 6 stamps', subAr: 'اجمع ٦ طوابع' },
+            { step: '3', en: 'FREE!', ar: 'مجاناً!', sub: '7th wash FREE (Full Wash)', subAr: 'السابع مجاناً (غسيل كامل)' },
           ].map(({ step, en, ar, sub, subAr }) => (
             <div key={step} className="bg-slate-900/50 rounded-xl p-2 border border-slate-800/60 space-y-1">
               <div className="w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center text-accent font-bold text-xs mx-auto">{step}</div>
