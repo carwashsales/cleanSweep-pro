@@ -24,7 +24,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { CarWashSale, InventoryItem } from '@/types';
+import type { CarWashSale, InventoryItem, Staff } from '@/types';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from 'date-fns';
@@ -52,12 +52,12 @@ export default function DashboardPage() {
   const salesQuery = useMemoFirebase(
     () =>
       firestore && user
-        ? query(
-            collection(firestore, 'users', user.uid, 'sales'), 
-            where('date', '>=', salesPeriod.start.toISOString()),
-            where('date', '<', salesPeriod.end.toISOString()),
-            orderBy('date', 'desc')
-          )
+         ? query(
+             collection(firestore, 'users', user.uid, 'sales'), 
+             where('date', '>=', salesPeriod.start.toISOString()),
+             where('date', '<', salesPeriod.end.toISOString()),
+             orderBy('date', 'desc')
+           )
         : null,
     [firestore, user, salesPeriod]
   );
@@ -80,22 +80,35 @@ export default function DashboardPage() {
     [firestore, user]
   );
 
+  const staffQuery = useMemoFirebase(
+    () => (firestore && user ? collection(firestore, 'users', user.uid, 'staff') : null),
+    [firestore, user]
+  );
 
   const { data: sales, isLoading: salesLoading } = useCollection<CarWashSale>(salesQuery);
   const { data: recentSales, isLoading: recentSalesLoading } = useCollection<CarWashSale>(recentSalesQuery);
   const { data: inventoryItems, isLoading: inventoryLoading } = useCollection<InventoryItem>(inventoryQuery);
   const { data: lowStockItems, isLoading: lowStockLoading } = useCollection<InventoryItem>(lowStockQuery);
+  const { data: staff, isLoading: staffLoading } = useCollection<Staff>(staffQuery);
 
-  const { totalRevenue, fullWashCount, outsideOnlyCount, otherServicesCount } = React.useMemo(() => {
-    if (!sales) return { totalRevenue: 0, fullWashCount: 0, outsideOnlyCount: 0, otherServicesCount: 0 };
+  const { totalRevenue, fullWashCount, outsideOnlyCount, otherServicesCount, staffCommissions, totalCommissions } = React.useMemo(() => {
+    if (!sales) return { totalRevenue: 0, fullWashCount: 0, outsideOnlyCount: 0, otherServicesCount: 0, staffCommissions: {} as Record<string, number>, totalCommissions: 0 };
     
     let revenue = 0;
     let fullWashes = 0;
     let outsideWashes = 0;
     let otherSales = 0;
+    let totalComm = 0;
+    const commByStaff: Record<string, number> = {};
 
     sales.forEach(sale => {
       revenue += sale.amount;
+      totalComm += sale.commission || 0;
+      
+      if (sale.staffName) {
+        commByStaff[sale.staffName] = (commByStaff[sale.staffName] || 0) + (sale.commission || 0);
+      }
+
       if (sale.service === 'Full Wash') {
         fullWashes++;
       } else if (sale.service === 'Outside Only') {
@@ -105,7 +118,14 @@ export default function DashboardPage() {
       }
     });
 
-    return { totalRevenue: revenue, fullWashCount: fullWashes, outsideOnlyCount: outsideWashes, otherServicesCount: otherSales };
+    return { 
+      totalRevenue: revenue, 
+      fullWashCount: fullWashes, 
+      outsideOnlyCount: outsideWashes, 
+      otherServicesCount: otherSales,
+      staffCommissions: commByStaff,
+      totalCommissions: totalComm
+    };
   }, [sales]);
 
   
@@ -161,7 +181,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Commercial Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* Card 1: Total Revenue */}
         <Card className="relative overflow-hidden border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -195,7 +215,40 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Today's Wash Traffic */}
+        {/* Card 2: Total Commission */}
+        <Card className="relative overflow-hidden border-t-4 border-t-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="space-y-0.5">
+              <CardTitle className="text-sm font-semibold text-muted-foreground tracking-wide">
+                COMMISSION / العمولات
+              </CardTitle>
+              <span className="text-xs text-muted-foreground/80 block">Today's total staff commission / عمولات الموظفين اليوم</span>
+            </div>
+            <div className="rounded-full bg-indigo-500/10 p-2 text-indigo-500 dark:text-indigo-400">
+              <CircleDollarSign className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="text-3xl font-bold flex items-baseline gap-1.5">
+              {salesLoading ? (
+                <span className="text-lg text-muted-foreground">Loading / جاري التحميل...</span>
+              ) : (
+                <>
+                  <span className="font-mono tracking-tight">
+                    {formatNumber(totalCommissions, { style: 'currency', currency: 'SAR' }).replace('SAR', '').trim()}
+                  </span>
+                  <CurrencySymbol />
+                </>
+              )}
+            </div>
+            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
+              <span>Incentive program</span>
+              <span className="font-semibold text-indigo-500">Active / نشط</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Today's Wash Traffic */}
         <Card className="relative overflow-hidden border-t-4 border-t-purple-500 shadow-sm hover:shadow-md transition-shadow lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="space-y-0.5">
@@ -248,7 +301,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Total Inventory */}
+        {/* Card 4: Total Inventory */}
         <Card className="relative overflow-hidden border-t-4 border-t-emerald-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="space-y-0.5">
@@ -279,7 +332,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Card 4: Low Stock Alerts */}
+        {/* Card 5: Low Stock Alerts */}
         <Card className="relative overflow-hidden border-t-4 border-t-amber-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="space-y-0.5">
@@ -321,7 +374,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Operations Tables */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Recent Transactions Card */}
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
@@ -475,6 +528,72 @@ export default function DashboardPage() {
                       </TableCell>
                     </TableRow>
                   ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Employee Commissions Card */}
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+            <div className="space-y-1">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <span>Staff Commissions</span>
+                <span className="text-muted-foreground font-normal">/</span>
+                <span className="text-primary">عمولات الموظفين</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Today's commissions earned by each washer / العمولات الفردية لليوم
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/50 rounded-lg">
+                  <TableRow>
+                    <TableHead className="font-semibold text-xs py-3 text-muted-foreground uppercase tracking-wider">
+                      Staff Member / الموظف
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs py-3 text-muted-foreground uppercase tracking-wider text-right">
+                      Commission / العمولة
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staffLoading && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-center text-xs py-8 text-muted-foreground">
+                        Loading staff list / جاري التحميل...
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!staffLoading && (!staff || staff.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="text-center text-xs py-8 text-muted-foreground">
+                        No staff members found / لم يتم العثور على موظفين
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {staff?.map((s) => {
+                    const commissionAmount = staffCommissions[s.name] || 0;
+                    return (
+                      <TableRow key={s.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="py-3 font-semibold text-sm">
+                          {s.name}
+                        </TableCell>
+                        <TableCell className="text-right py-3 font-mono font-bold text-sm">
+                          <div className="flex justify-end items-center gap-1.5">
+                            <span className="text-emerald-500 font-bold">
+                              {formatNumber(commissionAmount, { style: 'currency', currency: 'SAR' }).replace('SAR', '').trim()}
+                            </span>
+                            <CurrencySymbol />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

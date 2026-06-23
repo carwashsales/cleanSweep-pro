@@ -155,7 +155,18 @@ export default function LoyaltyPage() {
       const currentStamps = custSnap.exists() ? (custSnap.data() as Customer).washCount : 0;
       const totalWashes   = custSnap.exists() ? (custSnap.data() as Customer).totalWashes : 0;
 
-      const isFreeRedemption = saleData.paymentMethod === 'free-loyalty';
+      const isFreeRedemption = saleData.paymentMethod === 'free-loyalty' || saleData.paymentMethod === 'coupon';
+
+      if (isFreeRedemption && currentStamps < 6) {
+        setClaimStatus({
+          success: false,
+          msgEn: `Cannot redeem free wash. You only have ${currentStamps} of 6 stamps completed.`,
+          msgAr: `لا يمكن استرداد الغسيل المجاني. لديك فقط ${currentStamps} من أصل ٦ طوابع مكتملة.`,
+        });
+        setClaiming(false);
+        return;
+      }
+
       const newCount = isFreeRedemption ? 0 : (currentStamps >= 6 ? 1 : currentStamps + 1);
 
       // Update customer document
