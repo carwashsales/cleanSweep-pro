@@ -14,7 +14,8 @@ import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { useAuth, useUser, initiateEmailSignIn } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/components/ui/use-toast';
 import { FirebaseError } from 'firebase/app';
 
@@ -36,12 +37,13 @@ export default function LoginPage() {
     }
   }, [user, router, toast]);
 
-  const handleSignIn = async () => {
+  const handleSignIn = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!auth) return;
 
     try {
-      // We are not using non-blocking here to handle errors
-      await initiateEmailSignIn(auth, email, password);
+      // Use standard Firebase auth directly to wait for response and handle errors
+      await signInWithEmailAndPassword(auth, email, password);
       // The useEffect will handle the redirect and success toast
     } catch (e) {
       let description = "An unexpected error occurred. / حدث خطأ غير متوقع.";
@@ -88,7 +90,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <form onSubmit={handleSignIn} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email / البريد الإلكتروني</Label>
               <Input
@@ -112,10 +114,10 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" onClick={handleSignIn}>
+            <Button type="submit" className="w-full">
               Login / تسجيل الدخول
             </Button>
-          </div>
+          </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account? / ليس لديك حساب؟{' '}
             <Link href="/register" className="underline">
