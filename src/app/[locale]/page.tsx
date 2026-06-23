@@ -5,6 +5,7 @@ import {
   Package,
   Car,
   AlertTriangle,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Card,
@@ -21,6 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -40,6 +48,9 @@ export default function DashboardPage() {
   const t = useTranslations('DashboardPage');
   const formatNumber = useFormatter().number;
   const firestore = useFirestore();
+
+  // Commission detail dialog state
+  const [selectedStaffDetail, setSelectedStaffDetail] = React.useState<string | null>(null);
   
   const salesPeriod = React.useMemo(() => getSalesPeriod(), []);
 
@@ -91,8 +102,8 @@ export default function DashboardPage() {
   const { data: lowStockItems, isLoading: lowStockLoading } = useCollection<InventoryItem>(lowStockQuery);
   const { data: staff, isLoading: staffLoading } = useCollection<Staff>(staffQuery);
 
-  const { totalRevenue, fullWashCount, outsideOnlyCount, otherServicesCount, staffCommissions, totalCommissions } = React.useMemo(() => {
-    if (!sales) return { totalRevenue: 0, fullWashCount: 0, outsideOnlyCount: 0, otherServicesCount: 0, staffCommissions: {} as Record<string, number>, totalCommissions: 0 };
+  const { totalRevenue, fullWashCount, outsideOnlyCount, otherServicesCount, staffCommissions, totalCommissions, staffDetailedSales } = React.useMemo(() => {
+    if (!sales) return { totalRevenue: 0, fullWashCount: 0, outsideOnlyCount: 0, otherServicesCount: 0, staffCommissions: {} as Record<string, number>, totalCommissions: 0, staffDetailedSales: {} as Record<string, Array<{service: string; amount: number; commission: number; date: string}>> };
     
     let revenue = 0;
     let fullWashes = 0;
@@ -100,6 +111,7 @@ export default function DashboardPage() {
     let otherSales = 0;
     let totalComm = 0;
     const commByStaff: Record<string, number> = {};
+    const detailedByStaff: Record<string, Array<{service: string; amount: number; commission: number; date: string}>> = {};
 
     sales.forEach(sale => {
       revenue += sale.amount;
@@ -107,6 +119,13 @@ export default function DashboardPage() {
       
       if (sale.staffName) {
         commByStaff[sale.staffName] = (commByStaff[sale.staffName] || 0) + (sale.commission || 0);
+        if (!detailedByStaff[sale.staffName]) detailedByStaff[sale.staffName] = [];
+        detailedByStaff[sale.staffName].push({
+          service: sale.service,
+          amount: sale.amount,
+          commission: sale.commission || 0,
+          date: sale.date,
+        });
       }
 
       if (sale.service === 'Full Wash') {
@@ -124,7 +143,8 @@ export default function DashboardPage() {
       outsideOnlyCount: outsideWashes, 
       otherServicesCount: otherSales,
       staffCommissions: commByStaff,
-      totalCommissions: totalComm
+      totalCommissions: totalComm,
+      staffDetailedSales: detailedByStaff,
     };
   }, [sales]);
 
@@ -559,29 +579,36 @@ export default function DashboardPage() {
                     <TableHead className="font-semibold text-xs py-3 text-muted-foreground uppercase tracking-wider text-right">
                       Commission / العمولة
                     </TableHead>
+                    <TableHead className="w-8"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {staffLoading && (
                     <TableRow>
-                      <TableCell colSpan={2} className="text-center text-xs py-8 text-muted-foreground">
+                      <TableCell colSpan={3} className="text-center text-xs py-8 text-muted-foreground">
                         Loading staff list / جاري التحميل...
                       </TableCell>
                     </TableRow>
                   )}
                   {!staffLoading && (!staff || staff.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={2} className="text-center text-xs py-8 text-muted-foreground">
+                      <TableCell colSpan={3} className="text-center text-xs py-8 text-muted-foreground">
                         No staff members found / لم يتم العثور على موظفين
                       </TableCell>
                     </TableRow>
                   )}
                   {staff?.map((s) => {
                     const commissionAmount = staffCommissions[s.name] || 0;
+                    const washCount = staffDetailedSales[s.name]?.length || 0;
                     return (
-                      <TableRow key={s.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="py-3 font-semibold text-sm">
-                          {s.name}
+                      <TableRow
+                        key={s.id}
+                        className="hover:bg-muted/30 transition-colors cursor-pointer"
+                        onClick={() => setSelectedStaffDetail(s.name)}
+                      >
+                        <TableCell className="py-3">
+                          <div className="font-semibold text-sm">{s.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{washCount} wash{washCount !== 1 ? 'es' : ''} today</div>
                         </TableCell>
                         <TableCell className="text-right py-3 font-mono font-bold text-sm">
                           <div className="flex justify-end items-center gap-1.5">
@@ -591,15 +618,152 @@ export default function DashboardPage() {
                             <CurrencySymbol />
                           </div>
                         </TableCell>
+                        <TableCell className="py-3">
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        </TableCell>
                       </TableRow>
                     );
                   })}
+                  {/* Total Row */}
+                  {staff && staff.length > 0 && !staffLoading && (
+                    <TableRow className="bg-muted/40 border-t-2 border-border">
+                      <TableCell className="py-2 font-bold text-xs uppercase tracking-wide text-muted-foreground">Total / الإجمالي</TableCell>
+                      <TableCell className="text-right py-2 font-mono font-extrabold text-sm">
+                        <div className="flex justify-end items-center gap-1.5">
+                          <span className="text-primary">
+                            {formatNumber(totalCommissions, { style: 'currency', currency: 'SAR' }).replace('SAR', '').trim()}
+                          </span>
+                          <CurrencySymbol />
+                        </div>
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Employee Commission Detail Dialog */}
+      <Dialog open={!!selectedStaffDetail} onOpenChange={(open) => { if (!open) setSelectedStaffDetail(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <CircleDollarSign className="h-5 w-5 text-emerald-500" />
+              <span>Commission Details</span>
+              <span className="text-muted-foreground font-normal">/</span>
+              <span className="text-primary">تفاصيل العمولات</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Full commission breakdown for <strong>{selectedStaffDetail}</strong> today / تفاصيل عمولة {selectedStaffDetail} لليوم
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedStaffDetail && (() => {
+            const staffSales = staffDetailedSales[selectedStaffDetail] || [];
+            const totalStaffComm = staffCommissions[selectedStaffDetail] || 0;
+            const totalStaffAmount = staffSales.reduce((sum, s) => sum + s.amount, 0);
+
+            return (
+              <div className="pt-4 space-y-4">
+                {/* Summary cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-muted/50 rounded-xl p-3 border text-center">
+                    <p className="text-xs text-muted-foreground">Total Washes / الغسيلات</p>
+                    <p className="text-2xl font-extrabold font-mono mt-1">{staffSales.length}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-xl p-3 border text-center">
+                    <p className="text-xs text-muted-foreground">Total Revenue / الإيرادات</p>
+                    <p className="text-2xl font-extrabold font-mono mt-1 text-blue-500">
+                      {formatNumber(totalStaffAmount, { minimumFractionDigits: 2 })}
+                      <span className="text-sm ml-1"><CurrencySymbol /></span>
+                    </p>
+                  </div>
+                  <div className="bg-emerald-500/10 rounded-xl p-3 border border-emerald-500/20 text-center">
+                    <p className="text-xs text-muted-foreground">Commission / العمولة</p>
+                    <p className="text-2xl font-extrabold font-mono mt-1 text-emerald-500">
+                      {formatNumber(totalStaffComm, { minimumFractionDigits: 2 })}
+                      <span className="text-sm ml-1"><CurrencySymbol /></span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Per wash breakdown table */}
+                <div>
+                  <h3 className="text-sm font-bold mb-2 text-muted-foreground uppercase tracking-wide">Per-Wash Breakdown / تفاصيل كل غسلة</h3>
+                  <div className="border rounded-xl overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead className="text-xs py-2">#</TableHead>
+                          <TableHead className="text-xs py-2">Service / الخدمة</TableHead>
+                          <TableHead className="text-xs py-2 text-right">Amount / المبلغ</TableHead>
+                          <TableHead className="text-xs py-2 text-right">Commission / العمولة</TableHead>
+                          <TableHead className="text-xs py-2 text-right">Time / الوقت</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {staffSales.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-xs text-muted-foreground">
+                              No sales recorded today / لا توجد مبيعات مسجلة اليوم
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          staffSales.map((sale, idx) => (
+                            <TableRow key={idx} className="hover:bg-muted/30">
+                              <TableCell className="py-2 text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                              <TableCell className="py-2 text-xs font-semibold">{sale.service}</TableCell>
+                              <TableCell className="py-2 text-xs text-right font-mono">
+                                {sale.amount === 0 ? (
+                                  <span className="text-green-500 font-bold">FREE</span>
+                                ) : (
+                                  <span>{formatNumber(sale.amount, { minimumFractionDigits: 2 })} <CurrencySymbol /></span>
+                                )}
+                              </TableCell>
+                              <TableCell className="py-2 text-xs text-right font-mono text-emerald-500 font-bold">
+                                {formatNumber(sale.commission, { minimumFractionDigits: 2 })} <CurrencySymbol />
+                              </TableCell>
+                              <TableCell className="py-2 text-[10px] text-right text-muted-foreground font-mono">
+                                {format(new Date(sale.date), 'hh:mm a')}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* All staff totals footer */}
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-bold mb-3 text-muted-foreground uppercase tracking-wide">All Staff Summary / ملخص جميع الموظفين</h3>
+                  <div className="space-y-2">
+                    {Object.entries(staffCommissions).map(([name, comm]) => (
+                      <div key={name} className="flex justify-between items-center text-xs bg-muted/30 px-3 py-2 rounded-lg border">
+                        <span className={`font-semibold ${name === selectedStaffDetail ? 'text-primary' : ''}`}>
+                          {name} {name === selectedStaffDetail && '← Current'}
+                        </span>
+                        <span className="font-mono font-bold text-emerald-500">
+                          {formatNumber(comm, { minimumFractionDigits: 2 })} <CurrencySymbol />
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center text-sm bg-primary/5 border border-primary/20 px-3 py-2.5 rounded-lg font-extrabold mt-2">
+                      <span>Grand Total / الإجمالي الكلي</span>
+                      <span className="font-mono text-primary">
+                        {formatNumber(totalCommissions, { minimumFractionDigits: 2 })} <CurrencySymbol />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

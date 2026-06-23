@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import type { Price as ServicePrice } from '@/types';
-import { collection, doc, orderBy, query, getDocs } from 'firebase/firestore';
+import { collection, doc, orderBy, query, getDocs, limit } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Check, X, PlusCircle } from 'lucide-react';
@@ -40,6 +40,15 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+
+const DEFAULT_IMAGES: Record<string, string> = {
+  'Full Wash': 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=600&q=80',
+  'Outside Only': 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=600&q=80',
+  'Interior Only': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=600&q=80',
+  'Water Only': 'https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&w=600&q=80',
+  'Engine Wash Only': 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=600&q=80',
+  'default': 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80'
+};
 
 const EditableCell = ({ 
   value, 
@@ -111,9 +120,31 @@ function AddServiceDialog() {
   const [hasCoupon, setHasCoupon] = React.useState(false);
   const [price, setPrice] = React.useState(0);
   const [commission, setCommission] = React.useState(0);
+  const [imageUrl, setImageUrl] = React.useState('');
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 400;
+          canvas.height = 300;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, 400, 300);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          setImageUrl(compressedBase64);
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleAddService = async () => {
     if (!firestore || !user || !name.trim()) {
@@ -124,7 +155,7 @@ function AddServiceDialog() {
     const servicesCollection = collection(firestore, 'users', user.uid, 'services');
     
     // Get the highest order number to place the new service at the end
-    const snapshot = await getDocs(query(servicesCollection, orderBy('order', 'desc'), doc('limit', 1)));
+    const snapshot = await getDocs(query(servicesCollection, orderBy('order', 'desc'), limit(1)));
     const lastOrder = snapshot.docs.length > 0 ? snapshot.docs[0].data().order : 0;
 
     const newService: Omit<ServicePrice, 'id'> = {
@@ -132,6 +163,7 @@ function AddServiceDialog() {
       needsSize,
       hasCoupon,
       order: lastOrder + 1,
+      imageUrl: imageUrl || '',
       prices: {
         default: {
           price,
@@ -150,6 +182,7 @@ function AddServiceDialog() {
     setHasCoupon(false);
     setPrice(0);
     setCommission(0);
+    setImageUrl('');
   };
 
   return (
@@ -178,6 +211,15 @@ function AddServiceDialog() {
           <div className="flex items-center justify-between col-span-4">
             <Label htmlFor="has-coupon">Has Coupon Option</Label>
             <Switch id="has-coupon" checked={hasCoupon} onCheckedChange={setHasCoupon} />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="service-image" className="text-right">Image / الصورة</Label>
+            <div className="col-span-3 flex items-center gap-3">
+              {imageUrl && (
+                <img src={imageUrl} className="w-10 h-10 rounded object-cover border border-slate-800" alt="Preview" />
+              )}
+              <Input id="service-image" type="file" accept="image/*" onChange={handleImageChange} className="text-xs" />
+            </div>
           </div>
            {!needsSize && (
             <>
@@ -255,6 +297,25 @@ export default function PricingPage() {
     delete newPrices[oldSize];
 
     handleUpdate(service.id, { prices: newPrices });
+  };  const handleUpdateImage = (serviceId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 400;
+          canvas.height = 300;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, 400, 300);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          handleUpdate(serviceId, { imageUrl: compressedBase64 });
+        };
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
 
@@ -286,6 +347,24 @@ export default function PricingPage() {
                     />
                   </h3>
                   <div className="flex items-center gap-4">
+                      {/* Image Preview and Edit */}
+                      <div className="flex items-center gap-2 border border-slate-800 bg-slate-950 p-1.5 rounded-lg">
+                        <img 
+                          src={service.imageUrl || DEFAULT_IMAGES[service.name] || DEFAULT_IMAGES['default']} 
+                          className="w-8 h-8 rounded object-cover border border-slate-850" 
+                          alt={service.name}
+                        />
+                        <Label htmlFor={`file-upload-${service.id}`} className="text-[11px] cursor-pointer text-accent hover:underline">
+                          Change Image / تغيير الصورة
+                        </Label>
+                        <input
+                          id={`file-upload-${service.id}`}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleUpdateImage(service.id, e)}
+                        />
+                      </div>
                       <div className="flex items-center space-x-2">
                         <Label htmlFor={`coupon-switch-${service.id}`}>Has Coupon</Label>
                         <Switch

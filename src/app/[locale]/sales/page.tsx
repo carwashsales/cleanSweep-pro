@@ -63,6 +63,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+const DEFAULT_IMAGES: Record<string, string> = {
+  'Full Wash': 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&w=600&q=80',
+  'Outside Only': 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=600&q=80',
+  'Interior Only': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=600&q=80',
+  'Water Only': 'https://images.unsplash.com/photo-1507136566006-cfc505b114fc?auto=format&fit=crop&w=600&q=80',
+  'Engine Wash Only': 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=600&q=80',
+  'default': 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80'
+};
+
 // Cart Item Type
 type CartItem = {
   id: string; // unique cart item instance ID
@@ -96,6 +105,10 @@ export default function SalesPage() {
   const [selectedService, setSelectedService] = React.useState<ServicePrice | null>(null);
   const [selectedSize, setSelectedSize] = React.useState('');
   const [selectedStaffId, setSelectedStaffId] = React.useState('');
+
+  // Cart Add Success State
+  const [addToCartSuccessOpen, setAddToCartSuccessOpen] = React.useState(false);
+  const [lastAddedItemName, setLastAddedItemName] = React.useState('');
 
   // QR Code Kiosk Overlay Dialog (For customer registration QR)
   const [qrOpen, setQrOpen] = React.useState(false);
@@ -203,9 +216,11 @@ export default function SalesPage() {
     };
 
     setCart((prev) => [...prev, cartItem]);
+    setLastAddedItemName(selectedService.name);
     setServiceSelectOpen(false);
     setSelectedService(null);
     setErrors({});
+    setAddToCartSuccessOpen(true);
   };
 
   // Remove Item from Cart
@@ -322,19 +337,12 @@ export default function SalesPage() {
     }
 
     if (redeemFreeWash) {
-      if (cart.length !== 1) {
+      const hasFullWash = cart.some(item => item.serviceName === 'Full Wash');
+      if (!hasFullWash) {
         toast({
           variant: 'destructive',
           title: 'Invalid Free Wash / غسيل مجاني غير صالح',
-          description: 'Free wash must be the only service in the cart / يجب أن يكون الغسيل المجاني هو الخدمة الوحيدة في السلة.',
-        });
-        return;
-      }
-      if (cart[0].serviceName !== 'Full Wash') {
-        toast({
-          variant: 'destructive',
-          title: 'Invalid Free Wash / غسيل مجاني غير صالح',
-          description: 'Free wash reward is only eligible for Full Wash / مكافأة الغسيل المجاني مؤهلة فقط للغسيل الكامل.',
+          description: 'Free wash reward is only eligible for Full Wash. Please add a "Full Wash" to the cart. / مكافأة الغسيل المجاني مؤهلة فقط للغسيل الكامل. يرجى إضافة "غسيل كامل" إلى السلة.',
         });
         return;
       }
@@ -356,11 +364,19 @@ export default function SalesPage() {
     // QR generation logic
     const freeWashItemIndex = calculatedItems.items.findIndex(item => item.isFreeWash);
     const hasCouponPayment = paymentType === 'coupon';
-    const eligibleItemIndex = calculatedItems.items.some(item => item.price >= 20);
-    const shouldGenerateQr = freeWashItemIndex !== -1 || hasCouponPayment || (eligibleItemIndex && paymentType !== 'free-loyalty' && paymentType !== 'coupon');
+    const eligibleItemIndex = calculatedItems.items.findIndex(item => item.price >= 20);
+    const shouldGenerateQr = freeWashItemIndex !== -1 || hasCouponPayment || (eligibleItemIndex !== -1 && paymentType !== 'free-loyalty' && !hasCouponPayment);
 
-    const firstDocId = docRefs[0].id;
-    const claimCode = shouldGenerateQr ? firstDocId : '';
+    let claimCode = '';
+    if (shouldGenerateQr) {
+      if (freeWashItemIndex !== -1) {
+        claimCode = docRefs[freeWashItemIndex].id;
+      } else if (eligibleItemIndex !== -1) {
+        claimCode = docRefs[eligibleItemIndex].id;
+      } else {
+        claimCode = docRefs[0].id;
+      }
+    }
 
     // Save each cart item as a separate sales document
     calculatedItems.items.forEach((item, index) => {
@@ -605,20 +621,27 @@ export default function SalesPage() {
                       ? `From ${formatNumber(Math.min(...Object.values(srv.prices).map(p => p.price)))}`
                       : `${formatNumber(defaultPrice)}`;
 
+                    const bgImg = srv.imageUrl || DEFAULT_IMAGES[srv.name] || DEFAULT_IMAGES['default'];
+
                     return (
                       <button
                         key={srv.id}
                         type="button"
                         onClick={() => handleCatalogServiceClick(srv)}
                         disabled={noStaff}
+                        style={{
+                          backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.95)), url('${bgImg}')`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
                         className={cn(
-                          'p-4 rounded-xl border-2 hover:border-accent hover:bg-accent/5 text-left transition-all flex flex-col justify-between h-28 cursor-pointer relative overflow-hidden group',
+                          'p-4 rounded-xl border-2 border-border hover:border-accent hover:scale-[1.02] text-left transition-all flex flex-col justify-between h-28 cursor-pointer relative overflow-hidden group',
                           noStaff && 'opacity-50 cursor-not-allowed hover:bg-transparent hover:border-border'
                         )}
                       >
-                        <Car className="absolute right-[-10px] bottom-[-10px] h-20 w-20 text-slate-800/10 dark:text-slate-200/5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                        <Car className="absolute right-[-10px] bottom-[-10px] h-20 w-20 text-slate-800/10 dark:text-slate-200/5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 z-0" />
                         
-                        <div className="font-bold text-xs line-clamp-2 leading-tight pr-2 z-10">
+                        <div className="font-bold text-xs line-clamp-2 leading-tight pr-2 z-10 text-white">
                           {srv.name}
                         </div>
                         <div className="flex justify-between items-baseline mt-2 z-10 w-full">
@@ -637,7 +660,7 @@ export default function SalesPage() {
 
         {/* Right Side: Order Cart & Checkout (5 Cols) */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          <form onSubmit={handleCheckout}>
+          <form onSubmit={handleCheckout} id="checkout-cart-section">
             <Card className="border-border shadow-xl">
               <CardHeader className="bg-muted/40 pb-4 border-b">
                 <div className="flex justify-between items-center">
@@ -727,13 +750,13 @@ export default function SalesPage() {
                       </Label>
                     </div>
                     {redeemFreeWash && (
-                      cart.length === 1 && cart[0].serviceName === 'Full Wash' ? (
+                      cart.some(item => item.serviceName === 'Full Wash') ? (
                         <p className="text-[10px] text-green-500/90 leading-tight">
-                          ✨ Free Full Wash discount applied! The "Full Wash" service has been set to 0. The customer scans their QR code to claim the free wash.
+                          ✨ Free Full Wash discount applied! The "Full Wash" service price is set to 0. The customer scans their QR code to claim the free wash.
                         </p>
                       ) : (
                         <p className="text-[10px] text-red-500/90 font-bold leading-tight animate-pulse">
-                          ⚠️ Invalid cart! Loyalty free wash redemption requires exactly ONE item in the cart, and it must be "Full Wash".
+                          ⚠️ No "Full Wash" found in cart! Please add a "Full Wash" service to apply the discount.
                         </p>
                       )
                     )}
@@ -1355,6 +1378,58 @@ export default function SalesPage() {
             >
               <Printer className="h-4 w-4 mr-1" />
               Print / طباعة الفاتورة
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 4. Add-to-Cart Success Notification Dialog */}
+      <Dialog open={addToCartSuccessOpen} onOpenChange={setAddToCartSuccessOpen}>
+        <DialogContent className="sm:max-w-sm bg-slate-900 border-slate-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-bold flex items-center gap-2 text-base">
+              <CheckCircle className="h-5 w-5 text-green-400" />
+              <span>Added to Cart!</span>
+              <span className="text-xs text-slate-400 font-medium">تمت الإضافة!</span>
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs mt-1">
+              <span className="font-semibold text-white">"{lastAddedItemName}"</span> has been added to the cart. What would you like to do next?
+              <br />
+              <span className="text-[10px] text-slate-500">تمت إضافة الخدمة للسلة. ماذا تريد أن تفعل بعد ذلك؟</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-3 flex flex-col gap-3">
+            <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl p-3 border border-slate-700/50">
+              <div className="rounded-full bg-green-500/10 p-2.5 text-green-400 shrink-0">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-bold text-sm">{lastAddedItemName}</p>
+                <p className="text-[10px] text-slate-400">Successfully added · {cart.length} item{cart.length !== 1 ? 's' : ''} in cart</p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 border-t border-slate-800 pt-3 flex flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddToCartSuccessOpen(false)}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800 flex-1 text-xs h-10 flex flex-col gap-0.5"
+            >
+              <span>Add More Services</span>
+              <span className="text-[9px] opacity-70">إضافة خدمات أخرى</span>
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setAddToCartSuccessOpen(false);
+                // Scroll to the checkout cart area
+                document.getElementById('checkout-cart-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="bg-accent hover:bg-accent/90 text-white font-bold flex-1 text-xs h-10 flex flex-col gap-0.5"
+            >
+              <span className="flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" /> Go to Cart</span>
+              <span className="text-[9px] opacity-85">الذهاب للسلة</span>
             </Button>
           </DialogFooter>
         </DialogContent>

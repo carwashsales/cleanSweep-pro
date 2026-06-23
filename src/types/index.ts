@@ -51,6 +51,7 @@ export type Price = {
   needsSize: boolean;
   hasCoupon: boolean;
   order: number;
+  imageUrl?: string; // Optional service card background image (base64 or URL)
   prices: {
     [size: string]: {
       price: number;
