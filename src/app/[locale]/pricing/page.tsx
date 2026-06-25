@@ -120,31 +120,9 @@ function AddServiceDialog() {
   const [hasCoupon, setHasCoupon] = React.useState(false);
   const [price, setPrice] = React.useState(0);
   const [commission, setCommission] = React.useState(0);
-  const [imageUrl, setImageUrl] = React.useState('');
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.src = reader.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = 400;
-          canvas.height = 300;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, 400, 300);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          setImageUrl(compressedBase64);
-        };
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleAddService = async () => {
     if (!firestore || !user || !name.trim()) {
@@ -163,7 +141,6 @@ function AddServiceDialog() {
       needsSize,
       hasCoupon,
       order: lastOrder + 1,
-      imageUrl: imageUrl || '',
       prices: {
         default: {
           price,
@@ -182,7 +159,6 @@ function AddServiceDialog() {
     setHasCoupon(false);
     setPrice(0);
     setCommission(0);
-    setImageUrl('');
   };
 
   return (
@@ -211,15 +187,6 @@ function AddServiceDialog() {
           <div className="flex items-center justify-between col-span-4">
             <Label htmlFor="has-coupon">Has Coupon Option</Label>
             <Switch id="has-coupon" checked={hasCoupon} onCheckedChange={setHasCoupon} />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="service-image" className="text-right">Image / الصورة</Label>
-            <div className="col-span-3 flex items-center gap-3">
-              {imageUrl && (
-                <img src={imageUrl} className="w-10 h-10 rounded object-cover border border-slate-800" alt="Preview" />
-              )}
-              <Input id="service-image" type="file" accept="image/*" onChange={handleImageChange} className="text-xs" />
-            </div>
           </div>
            {!needsSize && (
             <>

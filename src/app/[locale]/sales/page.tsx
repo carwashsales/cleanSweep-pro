@@ -19,7 +19,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -98,7 +97,6 @@ export default function SalesPage() {
   // POS State
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [paymentType, setPaymentType] = React.useState<PaymentType>('cash');
-  const [redeemFreeWash, setRedeemFreeWash] = React.useState(false);
 
   // Dialog / Modal States
   const [serviceSelectOpen, setServiceSelectOpen] = React.useState(false);
@@ -234,17 +232,6 @@ export default function SalesPage() {
 
     let currentCart = cart.map(item => ({ ...item, price: item.price, isFreeWash: false }));
 
-    // Apply loyalty free wash discount if toggled manually (only valid for Full Wash)
-    if (redeemFreeWash) {
-      // Find the first "Full Wash" service item in the cart to apply the discount
-      const fullWashIndex = currentCart.findIndex(item => item.serviceName === 'Full Wash');
-
-      if (fullWashIndex !== -1) {
-        currentCart[fullWashIndex].price = 0;
-        currentCart[fullWashIndex].isFreeWash = true;
-      }
-    }
-
     // If payment method is coupon, all items price become 0
     if (paymentType === 'coupon') {
       currentCart = currentCart.map(item => ({ ...item, price: 0 }));
@@ -258,7 +245,7 @@ export default function SalesPage() {
       subtotal,
       commission
     };
-  }, [cart, redeemFreeWash, paymentType]);
+  }, [cart, paymentType]);
 
   const totalAmount = calculatedItems.subtotal;
   const vatAmount = totalAmount - (totalAmount / 1.15); // 15% VAT included
@@ -336,19 +323,9 @@ export default function SalesPage() {
       return;
     }
 
-    if (redeemFreeWash) {
-      const hasFullWash = cart.some(item => item.serviceName === 'Full Wash');
-      if (!hasFullWash) {
-        toast({
-          variant: 'destructive',
-          title: 'Invalid Free Wash / غسيل مجاني غير صالح',
-          description: 'Free wash reward is only eligible for Full Wash. Please add a "Full Wash" to the cart. / مكافأة الغسيل المجاني مؤهلة فقط للغسيل الكامل. يرجى إضافة "غسيل كامل" إلى السلة.',
-        });
-        return;
-      }
-    }
 
     if (!firestore || !user) return;
+
 
     // Generate Invoice Number and Transaction ID
     const txId = `tx_${Date.now()}`;
@@ -422,7 +399,6 @@ export default function SalesPage() {
 
       // Reset form states
       setCart([]);
-      setRedeemFreeWash(false);
       setPaymentType('cash');
 
       toast({
@@ -724,87 +700,37 @@ export default function SalesPage() {
                   </div>
                 )}
 
-                {/* 2. Loyalty Manual Redemption Section */}
-                {cart.length > 0 && (
-                  <div className="p-4 bg-accent/5 dark:bg-accent/10 rounded-xl border border-accent/10 space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="redeem-reward"
-                        checked={redeemFreeWash}
-                        onCheckedChange={(val) => {
-                          const checked = !!val;
-                          setRedeemFreeWash(checked);
-                          if (checked) {
-                            setPaymentType('free-loyalty');
-                          } else {
-                            setPaymentType('cash');
-                          }
-                        }}
-                      />
-                      <Label
-                        htmlFor="redeem-reward"
-                        className="text-xs font-bold cursor-pointer flex-1 flex flex-col gap-0.5"
-                      >
-                        <span>Redeem Loyalty Free Wash (7th Wash)</span>
-                        <span className="text-slate-500 text-[10px] font-normal">استرداد غسيل مجاني للولاء (الغسيل السابع)</span>
-                      </Label>
-                    </div>
-                    {redeemFreeWash && (
-                      cart.some(item => item.serviceName === 'Full Wash') ? (
-                        <p className="text-[10px] text-green-500/90 leading-tight">
-                          ✨ Free Full Wash discount applied! The "Full Wash" service price is set to 0. The customer scans their QR code to claim the free wash.
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-red-500/90 font-bold leading-tight animate-pulse">
-                          ⚠️ No "Full Wash" found in cart! Please add a "Full Wash" service to apply the discount.
-                        </p>
-                      )
-                    )}
-                  </div>
-                )}
 
-                {/* 3. Payment Method Section */}
+                {/* 2. Payment Method Section */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold flex justify-between">
                     <span>Payment Method</span>
                     <span>طريقة الدفع</span>
                   </Label>
-                  {redeemFreeWash ? (
-                    <div className="p-3 rounded-lg border-2 border-green-500/50 bg-green-500/10 text-green-400 font-bold flex items-center justify-between text-xs animate-pulse">
-                      <span className="flex flex-col gap-0.5">
-                        <span>Locked: Free Loyalty Wash</span>
-                        <span className="text-[10px] font-normal opacity-80">مغلق: غسيل ولاء مجاني</span>
-                      </span>
-                      <Badge variant="outline" className="border-green-500 text-green-400 bg-green-500/20">
-                        FREE / مجاني
-                      </Badge>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {[
-                        { id: 'cash', labelEn: 'Cash', labelAr: 'نقدي', color: 'border-green-500 bg-green-500/10 text-green-400 hover:bg-green-500/15' },
-                        { id: 'machine', labelEn: 'Card', labelAr: 'بطاقة', color: 'border-blue-500 bg-blue-500/10 text-blue-400 hover:bg-blue-500/15' },
-                        { id: 'coupon', labelEn: 'Coupon', labelAr: 'كوبون', color: 'border-amber-500 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15' },
-                        { id: 'not-paid', labelEn: 'Not Paid', labelAr: 'مؤجل', color: 'border-red-500 bg-red-500/10 text-red-400 hover:bg-red-500/15' }
-                      ].map((btn) => (
-                        <button
-                          key={btn.id}
-                          type="button"
-                          onClick={() => setPaymentType(btn.id as PaymentType)}
-                          disabled={noStaff}
-                          className={cn(
-                            'p-2 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all leading-tight h-12',
-                            paymentType === btn.id
-                              ? btn.color + ' border-2 shadow-lg scale-[1.03]'
-                              : 'border-border bg-background hover:bg-muted'
-                          )}
-                        >
-                          <span className="text-[10px] font-bold">{btn.labelEn}</span>
-                          <span className="text-[9px] opacity-75">{btn.labelAr}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { id: 'cash', labelEn: 'Cash', labelAr: 'نقدي', color: 'border-green-500 bg-green-500/10 text-green-400 hover:bg-green-500/15' },
+                      { id: 'machine', labelEn: 'Card', labelAr: 'بطاقة', color: 'border-blue-500 bg-blue-500/10 text-blue-400 hover:bg-blue-500/15' },
+                      { id: 'coupon', labelEn: 'Coupon', labelAr: 'كوبون', color: 'border-amber-500 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15' },
+                      { id: 'not-paid', labelEn: 'Not Paid', labelAr: 'مؤجل', color: 'border-red-500 bg-red-500/10 text-red-400 hover:bg-red-500/15' }
+                    ].map((btn) => (
+                      <button
+                        key={btn.id}
+                        type="button"
+                        onClick={() => setPaymentType(btn.id as PaymentType)}
+                        disabled={noStaff}
+                        className={cn(
+                          'p-2 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all leading-tight h-12',
+                          paymentType === btn.id
+                            ? btn.color + ' border-2 shadow-lg scale-[1.03]'
+                            : 'border-border bg-background hover:bg-muted'
+                        )}
+                      >
+                        <span className="text-[10px] font-bold">{btn.labelEn}</span>
+                        <span className="text-[9px] opacity-75">{btn.labelAr}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* 4. Checkout Calculations breakdown */}
